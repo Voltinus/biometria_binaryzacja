@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podstawy Biometrii - Binaryzacja</title>
+
+    <style>
+        .images {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            margin-top: 20px;
+        }
+
+        .imageContainer {
+            width: 45%;
+        }
+
+        .imageContainer img,
+        .imageContainer canvas {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        h3 {
+            font-family: Arial, sans-serif;
+        }
+
+        #imageHidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Binaryzacja obrazu</h2>
+
+    <button id="dogButton">Pies</button>
+    <button id="catButton">Kot</button>
+    <button id="loadFileButton">Własny obraz</button>
+
+    <input
+        type="file"
+        id="file"
+        accept=".jpg,.jpeg,.png,.bmp"
+        style="display: none;"
+    />
+
+    <div class="images">
+        <div class="imageContainer">
+            <h3>Oryginał</h3>
+            <img id="image" alt="Oryginalny obraz">
+        </div>
+
+        <div class="imageContainer">
+            <h3>Obraz zbinaryzowany</h3>
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const loadFileButton = document.getElementById("loadFileButton");
+        const fileInput = document.getElementById("file");
+        const dogButton = document.getElementById("dogButton");
+        const catButton = document.getElementById("catButton");
+
+        const image = document.getElementById("image");
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        // Otwieranie okna wyboru pliku
+        loadFileButton.addEventListener("click", () => {
+            fileInput.click();
+        });
+
+        // Wczytanie obrazu z pliku
+        fileInput.addEventListener("change", () => {
+            const file = fileInput.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = (event) => {
+                image.onload = () => {
+                    binaryzacja();
+                };
+
+                image.src = event.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        dogButton.addEventListener("click", () => {
+            image.onload = () => {
+                binaryzacja();
+            }
+
+            image.src = '/dog.jpg'
+        });
+
+        catButton.addEventListener("click", () => {
+            image.onload = () => {
+                binaryzacja();
+            }
+
+            image.src = '/cat.jpg'
+        });
+
+        // Binaryzacja obrazu
+        function binaryzacja() {
+            const width = image.naturalWidth;
+            const height = image.naturalHeight;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            // Narysowanie oryginału na canvasie
+            ctx.drawImage(image, 0, 0, width, height);
+
+            // Pobranie danych pikseli
+            const imageData = ctx.getImageData(
+                0, 0, width, height
+            );
+
+            const pixels = imageData.data;
+
+            // Próg binaryzacji: od 0 do 255
+            const threshold = 128;
+
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+
+                // Obliczenie jasności piksela
+                const gray = 0.299 * r
+                           + 0.587 * g
+                           + 0.114 * b;
+
+                // Zamiana piksela na czarny lub biały
+                const value = gray >= threshold ? 255 : 0;
+
+                pixels[i]     = value; // R
+                pixels[i + 1] = value; // G
+                pixels[i + 2] = value; // B
+                // Kanał alfa (pixels[i + 3]) pozostaje bez zmian
+            }
+
+            // Wyświetlenie zbinaryzowanego obrazu
+            ctx.putImageData(imageData, 0, 0);
+        }
+    </script>
+
+</body>
+</html>
