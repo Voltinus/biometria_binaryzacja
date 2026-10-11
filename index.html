@@ -35,7 +35,7 @@
 </head>
 <body>
 
-    <h2>Binaryzacja obrazu</h2>
+    <h3>Wczytowanie obrazu</h3>
 
     <button id="dogButton">Pies</button>
     <button id="catButton">Kot</button>
@@ -55,10 +55,14 @@
         </div>
 
         <div class="imageContainer">
-            <h3>Obraz zbinaryzowany</h3>
+            <h3>Obraz przetworzony</h3>
             <canvas id="canvas"></canvas>
         </div>
     </div>
+
+    <h3>Binaryzacja</h3>
+
+    <input type="range" value="128" min="0" max="256" onchange="binaryzacja(this.value)"/>
 
     <script>
         const loadFileButton = document.getElementById("loadFileButton");
@@ -113,7 +117,7 @@
         });
 
         // Binaryzacja obrazu
-        function binaryzacja() {
+        function binaryzacja(threshold = 128) {
             const width = image.naturalWidth;
             const height = image.naturalHeight;
 
@@ -129,9 +133,6 @@
             );
 
             const pixels = imageData.data;
-
-            // Próg binaryzacji: od 0 do 255
-            const threshold = 128;
 
             for (let i = 0; i < pixels.length; i += 4) {
                 const r = pixels[i];
