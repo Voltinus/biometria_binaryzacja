@@ -60,9 +60,13 @@
         </div>
     </div>
 
-    <h3>Binaryzacja</h3>
+    <h3>1. Skala szarości</h3>
+    <button onclick="grayscale()">Przetwórz</button>
 
-    <input type="range" value="128" min="0" max="256" onchange="binaryzacja(this.value)"/>
+    <h3>3. Binaryzacja</h3>
+
+    <button onclick="binarization()">Przetwórz</button>
+    <input type="range" id="binarizationThreshold" value="128" min="0" max="256" onchange="binarization(this.value)"/>
 
     <script>
         const loadFileButton = document.getElementById("loadFileButton");
@@ -90,10 +94,6 @@
             const reader = new FileReader();
 
             reader.onload = (event) => {
-                image.onload = () => {
-                    binaryzacja();
-                };
-
                 image.src = event.target.result;
             };
 
@@ -101,23 +101,15 @@
         });
 
         dogButton.addEventListener("click", () => {
-            image.onload = () => {
-                binaryzacja();
-            }
-
             image.src = '/dog.jpg'
         });
 
         catButton.addEventListener("click", () => {
-            image.onload = () => {
-                binaryzacja();
-            }
-
             image.src = '/cat.jpg'
         });
 
-        // Binaryzacja obrazu
-        function binaryzacja(threshold = 128) {
+        // 1. Konwersja do skali szarości
+        function grayscale() {
             const width = image.naturalWidth;
             const height = image.naturalHeight;
 
@@ -143,6 +135,49 @@
                 const gray = 0.299 * r
                            + 0.587 * g
                            + 0.114 * b;
+
+                // Zamiana piksela na czarny lub biały
+                const value = gray;
+
+                pixels[i]     = value; // R
+                pixels[i + 1] = value; // G
+                pixels[i + 2] = value; // B
+                // Kanał alfa (pixels[i + 3]) pozostaje bez zmian
+            }
+
+            // Wyświetlenie zbinaryzowanego obrazu
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // 3. Binaryzacja progowa z progiem ustawianym suwakiem (ręcznie).
+        function binarization(threshold = 128) {
+            if (threshold == 128) {
+                document.getElementById("binarizationThreshold").value = threshold;
+            }
+
+            const width = image.naturalWidth;
+            const height = image.naturalHeight;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            // Narysowanie oryginału na canvasie
+            ctx.drawImage(image, 0, 0, width, height);
+
+            // Pobranie danych pikseli
+            const imageData = ctx.getImageData(
+                0, 0, width, height
+            );
+
+            const pixels = imageData.data;
+
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+
+                // Obliczenie jasności piksela
+                const gray = 0.3 * r + 0.6 * g + 0.1 * b;
 
                 // Zamiana piksela na czarny lub biały
                 const value = gray >= threshold ? 255 : 0;
