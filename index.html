@@ -69,6 +69,7 @@
     <h3>3. Binaryzacja</h3>
     <button onclick="binarization()">Przetwórz</button>
     <input type="range" id="binarizationThreshold" value="128" min="0" max="256" onchange="binarization(this.value)"/>
+    <span id="binarizationThresholdValue"></span>
 
     <h3>4. Binaryzacja automatyczna (Otsu)</h3>
     <button onclick="binarizationOtsu()">Przetwórz metodą Otsu</button>
@@ -82,6 +83,10 @@
     <input type="number" id="niblackK" value="-0.2" step="0.1">
 
     <button onclick="niblack()">Przetwórz</button>
+
+    <h3>6. Zapis obrazu</h3>
+    <button onclick="saveImage()">Zapisz obraz</button>
+
 
     <script>
         const loadFileButton = document.getElementById("loadFileButton");
@@ -197,6 +202,8 @@
             if (threshold == 128) {
                 document.getElementById("binarizationThreshold").value = threshold;
             }
+
+            document.getElementById("binarizationThresholdValue").innerText = threshold;
 
             const width = image.naturalWidth;
             const height = image.naturalHeight;
@@ -397,7 +404,18 @@
             ctx.putImageData(imageData, 0, 0);
             console.log('niblack finish');
         }
-    </script>
 
+        // 6. Zapis obrazu z canvasa
+        function saveImage() {
+            if (canvas.width === 0 || canvas.height === 0) {
+                alert("Brak obrazu do zapisu! Najpierw przetwórz jakiś obraz.");
+                return;
+            }
+            const link = document.createElement("a");
+            link.download = "przetworzony_obraz.png";
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        }
+    </script>
 </body>
 </html>
