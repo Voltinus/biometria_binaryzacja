@@ -63,10 +63,25 @@
     <h3>1. Skala szarości</h3>
     <button onclick="grayscale()">Przetwórz</button>
 
-    <h3>3. Binaryzacja</h3>
+    <h3>2. Histogram obrazu w skali szarości</h3>
+    <canvas id="histogram" width="256" height="150"></canvas>
 
+    <h3>3. Binaryzacja</h3>
     <button onclick="binarization()">Przetwórz</button>
     <input type="range" id="binarizationThreshold" value="128" min="0" max="256" onchange="binarization(this.value)"/>
+
+    <h3>4. Binaryzacja automatyczna (Otsu)</h3>
+    <button onclick="binarizationOtsu()">Przetwórz metodą Otsu</button>
+
+    <h3>5. Binaryzacja adaptacyjna - Niblack</h3>
+
+    <label>Rozmiar okna:</label>
+    <input type="number" id="windowSize" value="15" min="3" step="2">
+
+    <label>Parametr k:</label>
+    <input type="number" id="niblackK" value="-0.2" step="0.1">
+
+    <button onclick="niblack()">Przetwórz</button>
 
     <script>
         const loadFileButton = document.getElementById("loadFileButton");
@@ -147,6 +162,34 @@
 
             // Wyświetlenie zbinaryzowanego obrazu
             ctx.putImageData(imageData, 0, 0);
+            // Wyświetlanie histogramu
+            drawHistogram(imageData);
+        }
+
+        // 2. Histogram
+        function drawHistogram(imageData) {
+            const histogramCanvas = document.getElementById("histogram");
+            const hctx = histogramCanvas.getContext("2d");
+
+            const histogram = new Array(256).fill(0);
+            const pixels = imageData.data;
+
+            // Zliczanie jasności pikseli
+            for (let i = 0; i < pixels.length; i += 4) {
+                histogram[pixels[i]]++;
+            }
+
+            hctx.clearRect(0, 0, 256, 150);
+
+            const max = Math.max(...histogram);
+
+            // Rysowanie słupków histogramu
+            for (let i = 0; i < 256; i++) {
+                const barHeight = (histogram[i] / max) * 150;
+
+                hctx.fillStyle = "black";
+                hctx.fillRect(i, 150 - barHeight, 1, barHeight);
+            }
         }
 
         // 3. Binaryzacja progowa z progiem ustawianym suwakiem (ręcznie).
@@ -190,6 +233,169 @@
 
             // Wyświetlenie zbinaryzowanego obrazu
             ctx.putImageData(imageData, 0, 0);
+        }
+    
+        // 4. Binaryzacja automatyczna metodą Otsu
+        function binarizationOtsu() {
+            const width = image.naturalWidth;
+            const height = image.naturalHeight;
+
+            if (width === 0 || height === 0) return;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            // Narysowanie oryginału
+            ctx.drawImage(image, 0, 0, width, height);
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const pixels = imageData.data;
+            const totalPixels = width * height;
+
+            // Inicjalizacja histogramu i tablicy przechowującej odcienie szarości pikseli
+            const histogram = new Array(256).fill(0);
+            const grayValues = new Uint8Array(totalPixels);
+
+            // KROK 1: Konwersja do skali szarości i zliczanie histogramu
+            for (let i = 0, j = 0; i < pixels.length; i += 4, j++) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+
+                // Wykorzystujemy tę samą wagę jasności co w Twojej funkcji ręcznej
+                const gray = Math.round(0.3 * r + 0.6 * g + 0.1 * b);
+                grayValues[j] = gray;
+                histogram[gray]++;
+            }
+
+            // KROK 2: Algorytm Otsu - szukanie optymalnego progu
+            let sum = 0;
+            for (let i = 0; i < 256; i++) {
+                sum += i * histogram[i];
+            }
+
+            let sumB = 0;
+            let wB = 0; // Waga tła (liczba pikseli)
+            let wF = 0; // Waga pierwszego planu
+
+            let maxVariance = 0;
+            let optimalThreshold = 0;
+
+            for (let t = 0; t < 256; t++) {
+                wB += histogram[t];
+                if (wB === 0) continue;
+
+                wF = totalPixels - wB;
+                if (wF === 0) break;
+
+                sumB += t * histogram[t];
+
+                const mB = sumB / wB;            // Średnia tła
+                const mF = (sum - sumB) / wF;    // Średnia pierwszego planu
+
+                // Obliczenie wariancji międzyklasowej
+                const variance = wB * wF * (mB - mF) * (mB - mF);
+
+                if (variance > maxVariance) {
+                    maxVariance = variance;
+                    optimalThreshold = t;
+                }
+            }
+
+            // Aktualizacja suwaka na ekranie, aby pokazywał wyliczony próg
+            document.getElementById("binarizationThreshold").value = optimalThreshold;
+
+            // KROK 3: Klasyfikacja pikseli na podstawie wyznaczonego progu
+            for (let i = 0, j = 0; i < pixels.length; i += 4, j++) {
+                const value = grayValues[j] >= optimalThreshold ? 255 : 0;
+
+                pixels[i]     = value; // R
+                pixels[i + 1] = value; // G
+                pixels[i + 2] = value; // B
+            }
+
+            // Wyświetlenie obrazu na canvasie
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // 5. Binaryzacja adaptacyjna Niblack
+        function niblack() {
+            console.log('niblack start');
+
+            const width = image.naturalWidth;
+            const height = image.naturalHeight;
+
+            if (!width || !height) return;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            ctx.drawImage(image, 0, 0, width, height);
+
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const pixels = imageData.data;
+
+            const size = Math.max(
+                3,
+                parseInt(document.getElementById("windowSize").value) || 15
+            );
+            const radius = Math.floor(size / 2);
+            const k = parseFloat(document.getElementById("niblackK").value) || 0;
+
+            // Zapis jasności wszystkich pikseli
+            const gray = new Array(width * height);
+
+            for (let i = 0; i < pixels.length; i += 4) {
+                gray[i / 4] = Math.round(
+                    0.299 * pixels[i] +
+                    0.587 * pixels[i + 1] +
+                    0.114 * pixels[i + 2]
+                );
+            }
+
+            // Binaryzacja lokalna metodą Niblacka
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let sum = 0;
+                    let sumSq = 0;
+                    let count = 0;
+
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            const nx = x + dx;
+                            const ny = y + dy;
+
+                            if (
+                                nx >= 0 && nx < width &&
+                                ny >= 0 && ny < height
+                            ) {
+                                const value = gray[ny * width + nx];
+                                sum += value;
+                                sumSq += value * value;
+                                count++;
+                            }
+                        }
+                    }
+
+                    const mean = sum / count;
+                    const variance = Math.max(
+                        0,
+                        sumSq / count - mean * mean
+                    );
+                    const stdDev = Math.sqrt(variance);
+
+                    const threshold = mean + k * stdDev;
+                    const value = gray[y * width + x] >= threshold ? 255 : 0;
+
+                    const i = (y * width + x) * 4;
+
+                    pixels[i] = value;
+                    pixels[i + 1] = value;
+                    pixels[i + 2] = value;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+            console.log('niblack finish');
         }
     </script>
 
